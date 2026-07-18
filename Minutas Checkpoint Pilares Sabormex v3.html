@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Minutas Checkpoint · Pilares Sabormex</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --bg:#101317;
+    --panel:#171b21;
+    --panel-2:#1d222a;
+    --ink:#eef0f3;
+    --ink-dim:#9aa3af;
+    --line:#2a2f38;
+    --listo:#3FBF7F;
+    --foco:#E8B93F;
+    --confirmado:#3F9BE8;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Söhne','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    overflow:hidden;
+  }
+
+  .deck{position:relative; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center;}
+
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    padding:64px 88px 48px; opacity:0; transform:translateX(24px);
+    transition:opacity .45s ease, transform .45s ease;
+  }
+  .slide.active{display:flex; opacity:1; transform:translateX(0);}
+
+  .meta-row{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:40px; flex-shrink:0;
+  }
+  .meta-left{display:flex; align-items:baseline; gap:14px;}
+  .meta-eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); font-weight:600;}
+  .meta-date{font-size:13px; color:var(--ink-dim); font-variant-numeric:tabular-nums; border-radius:6px; padding:2px 6px; margin:-2px -6px;}
+  .meta-date[contenteditable="true"]:hover{background:var(--panel);}
+  .meta-date[contenteditable="true"]:focus{outline:1px dashed var(--ink-dim); background:var(--panel-2);}
+  .meta-right{display:flex; align-items:center; gap:14px;}
+  .slide-index{font-size:12px; color:var(--ink-dim); font-variant-numeric:tabular-nums; letter-spacing:.05em;}
+
+  #slide-cover{justify-content:center; padding-top:0;}
+  .cover-eyebrow{font-size:13px; letter-spacing:.2em; text-transform:uppercase; color:#7C6CF0; font-weight:600; margin-bottom:22px;}
+  .cover-title{font-size:clamp(38px,5.4vw,68px); line-height:1.04; font-weight:700; letter-spacing:-.02em; max-width:920px; margin:0 0 22px;}
+  .cover-sub{font-size:17px; color:var(--ink-dim); max-width:620px; line-height:1.6; margin-bottom:40px;}
+  .cover-pillars{display:flex; gap:14px; flex-wrap:wrap;}
+  .pillar-chip{
+    display:flex; align-items:center; gap:9px; padding:9px 16px; border-radius:100px;
+    border:1px solid var(--line); background:var(--panel); font-size:13px; font-weight:600;
+    color:var(--ink); cursor:pointer; transition:border-color .2s, transform .2s;
+  }
+  .pillar-chip:hover{transform:translateY(-2px);}
+  .pillar-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+
+  .pillar-tag{
+    display:inline-flex; align-items:center; gap:10px; padding:7px 16px; border-radius:100px;
+    font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; width:fit-content;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent);
+  }
+  .pillar-title{font-size:clamp(28px,3.4vw,42px); font-weight:700; letter-spacing:-.015em; margin:0 0 34px; line-height:1.1;}
+
+  .content-grid{display:grid; grid-template-columns:1fr 1fr; gap:36px; flex:1; min-height:0;}
+  .col{display:flex; flex-direction:column; min-height:0;}
+  .col-label{
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; color:var(--accent);
+    margin-bottom:16px; display:flex; align-items:center; gap:8px;
+  }
+  .col-label::before{content:''; width:16px; height:2px; background:var(--accent); display:inline-block;}
+
+  .item-list{display:flex; flex-direction:column; gap:10px; overflow-y:auto; padding-right:6px;}
+  .item{
+    position:relative; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:10px; padding:14px 16px; font-size:14.5px; line-height:1.55; color:var(--ink);
+  }
+  .item[contenteditable="true"]:focus{outline:none; border-color:var(--accent); background:var(--panel-2);}
+  .item-remove{
+    position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--ink-dim); font-size:12px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .15s;
+  }
+  .item:hover .item-remove{opacity:1;}
+  .add-item-btn{
+    align-self:flex-start; margin-top:2px; font-size:12.5px; color:var(--ink-dim); background:transparent;
+    border:1px dashed var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; transition:border-color .2s, color .2s;
+  }
+  .add-item-btn:hover{border-color:var(--accent); color:var(--accent);}
+
+  .badge{display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; padding:2px 9px; border-radius:100px; margin-left:6px; vertical-align:middle; cursor:pointer;}
+  .badge-listo{background:#3FBF7F22; color:var(--listo);}
+  .badge-foco{background:#E8B93F22; color:var(--foco);}
+  .badge-confirmado{background:#3F9BE822; color:var(--confirmado);}
+
+  .interview-list{overflow-y:auto; padding-right:6px; display:flex; flex-direction:column; gap:8px;}
+  .interview{
+    position:relative; display:grid; grid-template-columns:96px 1fr auto 22px; align-items:center; gap:12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:11px 14px; font-size:13.5px;
+  }
+  .interview-date{color:var(--ink-dim); font-variant-numeric:tabular-nums; font-size:12.5px;}
+  .interview-date[contenteditable="true"]:focus{outline:none;}
+  .interview-person[contenteditable="true"]{outline:none;}
+  .interview-person b{display:block; color:var(--ink); font-weight:700;}
+  .interview-person span{color:var(--ink-dim); font-size:12px;}
+  .interview-remove{width:20px; height:20px; border-radius:50%; border:1px solid var(--line); background:var(--panel-2); color:var(--ink-dim); font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .15s;}
+  .interview:hover .interview-remove{opacity:1;}
+
+  #slide-final{justify-content:center; align-items:center; text-align:center;}
+  .final-icon-row{display:flex; gap:12px; margin-bottom:32px;}
+  .final-icon{width:12px; height:12px; border-radius:50%;}
+  .final-title{font-size:clamp(30px,4vw,46px); font-weight:700; letter-spacing:-.02em; margin-bottom:16px;}
+  .final-sub{font-size:15px; color:var(--ink-dim); max-width:520px; line-height:1.6; margin-bottom:44px;}
+  .export-btn{
+    display:inline-flex; align-items:center; gap:10px; background:var(--ink); color:#111; border:none;
+    padding:15px 30px; border-radius:100px; font-size:14.5px; font-weight:700; letter-spacing:.01em;
+    cursor:pointer; transition:transform .2s, box-shadow .2s;
+  }
+  .export-btn:hover{transform:translateY(-2px); box-shadow:0 10px 30px rgba(255,255,255,.12);}
+  .export-note{margin-top:16px; font-size:12px; color:var(--ink-dim);}
+
+  .toast{
+    position:fixed; bottom:34px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#111; padding:12px 22px; border-radius:100px; font-size:13px; font-weight:600;
+    opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; z-index:60; max-width:70vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .nav{
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:18px;
+    background:rgba(23,27,33,.85); backdrop-filter:blur(10px); border:1px solid var(--line); padding:10px 16px;
+    border-radius:100px; z-index:40;
+  }
+  .nav-btn{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--ink);
+    cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px;
+    transition:background .2s, border-color .2s;
+  }
+  .nav-btn:hover{background:var(--panel-2); border-color:var(--ink-dim);}
+  .nav-btn:disabled{opacity:.3; cursor:default;}
+  .nav-dots{display:flex; gap:8px; max-width:220px; overflow-x:auto;}
+  .nav-dot{width:7px; height:7px; border-radius:50%; background:var(--line); cursor:pointer; transition:background .2s, transform .2s, width .2s; flex-shrink:0;}
+  .nav-dot.active{width:22px; border-radius:4px; background:var(--ink);}
+
+  .edit-hint{
+    position:fixed; top:22px; right:28px; font-size:11.5px; color:var(--ink-dim); display:flex; align-items:center;
+    gap:7px; z-index:40; border:1px solid var(--line); padding:7px 13px; border-radius:100px; background:rgba(23,27,33,.7);
+  }
+  .edit-hint .dot{width:6px; height:6px; border-radius:50%; background:var(--listo);}
+
+  .toolbar{
+    position:fixed; top:22px; left:28px; z-index:45; display:flex; gap:8px; flex-wrap:wrap; max-width:60vw;
+  }
+  .tool-btn{
+    display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--ink);
+    background:rgba(23,27,33,.85); backdrop-filter:blur(10px); border:1px solid var(--line); padding:8px 14px;
+    border-radius:100px; cursor:pointer; transition:border-color .2s, transform .2s;
+  }
+  .tool-btn:hover{border-color:var(--ink-dim); transform:translateY(-1px);}
+
+  .panel{
+    position:fixed; top:68px; left:28px; z-index:46; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:18px; width:280px; max-height:70vh; overflow-y:auto;
+    box-shadow:0 20px 50px rgba(0,0,0,.4); display:none;
+  }
+  .panel.open{display:block;}
+  .panel-title{font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); font-weight:700; margin-bottom:14px;}
+  .color-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .color-row input[type="color"]{
+    width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:none; cursor:pointer; padding:0;
+  }
+  .color-row span{font-size:13px; color:var(--ink); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .panel-empty{font-size:12.5px; color:var(--ink-dim);}
+
+  /* ---------- Botones destacados del toolbar ---------- */
+  .tool-btn-accent{border-color:#3FBF7F; color:#3FBF7F;}
+  .tool-btn-accent:hover{background:#3FBF7F14;}
+  .tool-btn-home{border-color:#3F9BE8; color:#3F9BE8; display:none;}
+  .tool-btn-home:hover{background:#3F9BE814;}
+  .tool-btn-home.visible{display:flex;}
+
+  /* ---------- Banner "viendo minuta pasada" ---------- */
+  .viewing-banner{
+    position:fixed; top:0; left:0; right:0; z-index:50; display:none; align-items:center; justify-content:center;
+    gap:16px; background:linear-gradient(90deg,#3F9BE8,#7C6CF0); color:#fff; font-size:13px; font-weight:600;
+    padding:10px 20px; text-align:center;
+  }
+  .viewing-banner.show{display:flex;}
+  .viewing-banner-btn{
+    background:#fff; color:#1d222a; border:none; border-radius:100px; padding:6px 16px; font-size:12.5px;
+    font-weight:700; cursor:pointer; flex-shrink:0; transition:transform .15s;
+  }
+  .viewing-banner-btn:hover{transform:translateY(-1px);}
+
+  body.viewing-history .toolbar{top:66px;}
+  body.viewing-history .edit-hint{top:66px;}
+
+  /* ---------- Panel de historial de minutas ---------- */
+  .panel-wide{width:320px;}
+  .history-pinned{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; margin-bottom:14px;
+    background:#3F9BE81a; border:1px solid #3F9BE8; color:#3F9BE8; font-size:13px; font-weight:700; cursor:pointer;
+    transition:transform .15s;
+  }
+  .history-pinned:hover{transform:translateY(-1px);}
+  .history-pinned em{font-style:normal; font-weight:500; opacity:.8; font-size:11.5px;}
+  .history-pinned-icon{font-size:16px;}
+  .history-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:10px;
+    background:var(--panel-2); border:1px solid var(--line); margin-bottom:8px; cursor:pointer; transition:border-color .15s;
+  }
+  .history-item:hover{border-color:var(--ink-dim);}
+  .history-item-info{display:flex; flex-direction:column; gap:2px; overflow:hidden;}
+  .history-item-title{font-size:13px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:190px;}
+  .history-item-date{font-size:11px; color:var(--ink-dim); font-variant-numeric:tabular-nums;}
+  .history-item-del{
+    width:22px; height:22px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--ink-dim);
+    font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:border-color .15s, color .15s;
+  }
+  .history-item-del:hover{border-color:#E85D75; color:#E85D75;}
+
+  #wordFileInput{display:none;}
+
+  .slide-del-btn{
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--ink-dim);
+    font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .2s, color .2s;
+  }
+  .slide-del-btn:hover{border-color:#E85D75; color:#E85D75;}
+
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:10px;}
+
+  /* ---------- ICONOGRAFÍA ---------- */
+  .pillar-icon{
+    display:inline-flex; align-items:center; justify-content:center; font-size:20px; line-height:1;
+    cursor:pointer; margin-right:8px; width:34px; height:34px; border-radius:10px;
+    background:var(--accent-soft); border:1px solid var(--accent); vertical-align:middle;
+    transition:transform .15s;
+  }
+  .pillar-icon:hover{transform:scale(1.08);}
+  .pillar-tag-row{display:flex; align-items:center; gap:0; margin-bottom:22px;}
+  .cover-icon{font-size:14px; margin-right:2px;}
+  .final-icon{display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; font-size:15px;}
+
+  /* ---------- TOUCH DEVICES: mostrar botones de eliminar sin :hover ---------- */
+  @media (hover:none){
+    .item-remove, .interview-remove, .slide-del-btn{opacity:1;}
+  }
+
+  /* ---------- RESPONSIVE: TABLETS ---------- */
+  @media (max-width:860px){
+    .content-grid{grid-template-columns:1fr; overflow-y:auto;}
+    .slide{padding:36px 22px 100px;}
+    .interview{grid-template-columns:1fr; gap:4px;}
+    .toolbar{max-width:90vw;}
+    .panel{width:min(280px, 82vw);}
+  }
+
+  /* ---------- RESPONSIVE: MÓVILES ---------- */
+  @media (max-width:560px){
+    .slide{padding:88px 16px 120px;}
+    .meta-row{flex-wrap:wrap; gap:8px; margin-bottom:24px;}
+    .cover-title{font-size:clamp(28px,9vw,44px);}
+    .cover-sub{font-size:15px;}
+    .pillar-title{font-size:clamp(24px,7vw,32px); margin-bottom:22px;}
+    .pillar-icon{width:28px; height:28px; font-size:16px;}
+    .toolbar{top:14px; left:14px; right:14px; max-width:none;}
+    .tool-btn{font-size:11.5px; padding:7px 10px;}
+    .edit-hint{display:none;}
+    .nav{bottom:16px; padding:8px 12px; gap:10px;}
+    .nav-dots{max-width:120px;}
+    .interview{grid-template-columns:1fr; padding:12px;}
+    .interview-remove{justify-self:flex-end;}
+    .export-btn{padding:13px 22px; font-size:13.5px;}
+    .viewing-banner{flex-direction:column; gap:8px; padding:10px 14px; font-size:12px;}
+    .panel-wide{width:min(320px, 86vw);}
+  }
+
+  /* ---------- RESPONSIVE: PANTALLAS GRANDES ---------- */
+  @media (min-width:1600px){
+    .slide{padding:80px 140px 60px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="edit-hint no-export"><span class="dot"></span>Haz clic en cualquier texto para editarlo</div>
+
+<div class="viewing-banner no-export" id="viewingBanner">
+  <span id="viewingBannerText"></span>
+  <button class="viewing-banner-btn" onclick="returnToToday()">🏠 Volver a Minuta de Hoy</button>
+</div>
+
+<div class="toolbar no-export">
+  <button class="tool-btn" onclick="document.getElementById('wordFileInput').click()">📄 Importar Word</button>
+  <button class="tool-btn" onclick="togglePanel('colorPanel')">🎨 Colores</button>
+  <button class="tool-btn" onclick="addSlide()">＋ Agregar slide</button>
+  <button class="tool-btn tool-btn-accent" onclick="saveMinuteToHistory()" title="Guarda la minuta actual con fecha y hora en el historial">💾 Guardar</button>
+  <button class="tool-btn" onclick="togglePanel('historyPanel')">🕘 Minutas guardadas</button>
+  <button class="tool-btn tool-btn-home" id="todayBtn" onclick="returnToToday()" title="Volver a la Minuta de Hoy (nueva entrada)">🏠 Minuta de Hoy</button>
+  <button class="tool-btn" onclick="resetSavedData()" title="Borra el contenido guardado en este navegador y recarga la minuta original">🗑️ Reiniciar</button>
+</div>
+<input type="file" id="wordFileInput" accept=".docx" class="no-export">
+
+<div class="panel no-export" id="colorPanel">
+  <div class="panel-title">Color de texto</div>
+  <div class="color-row">
+    <input type="color" id="textColorInput" value="#eef0f3">
+    <span>Texto general de la minuta</span>
+  </div>
+  <div class="panel-title" style="margin-top:16px;">Color de acento por pilar</div>
+  <div id="colorRows"></div>
+</div>
+
+<div class="panel no-export panel-wide" id="historyPanel">
+  <div class="panel-title">Minutas guardadas</div>
+  <div class="history-pinned" onclick="returnToToday()">
+    <span class="history-pinned-icon">🏠</span>
+    <span>Minuta de Hoy <em>(nueva entrada)</em></span>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<div class="deck">
+
+  <section class="slide active" id="slide-cover">
+    <div class="cover-eyebrow">WeWow × Sabormex — Minuta de checkpoint</div>
+    <h1 class="cover-title" contenteditable="true">Minutas Checkpoint<br>Pilares Sabormex</h1>
+    <p class="cover-sub" contenteditable="true">Seguimiento de estatus y requerimientos por pilar — reunión del 21 de julio, 9:30&nbsp;am.</p>
+    <div class="cover-pillars" id="coverPillars"></div>
+  </section>
+
+  <section class="slide pillar-slide" data-color="#7C6CF0" data-icon="💡">
+    <div class="meta-row">
+      <div class="meta-left">
+        <span class="meta-eyebrow">Checkpoint</span>
+        <span class="meta-date" contenteditable="true">21 de julio · 9:30 am</span>
+      </div>
+      <div class="meta-right">
+        <span class="slide-index"></span>
+        <button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button>
+      </div>
+    </div>
+    <div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">💡</span><span class="pillar-tag" contenteditable="true">Pilar Innovación</span></div>
+    <h2 class="pillar-title" contenteditable="true">Innovación</h2>
+    <div class="content-grid">
+      <div class="col">
+        <div class="col-label">Estatus</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Presentación consultor y en puerta KO de innovación.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+      <div class="col">
+        <div class="col-label">Requerimientos</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Qué datos requieren para los accesos de WeWow.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide pillar-slide" data-color="#EA8B3B" data-icon="🚀">
+    <div class="meta-row">
+      <div class="meta-left">
+        <span class="meta-eyebrow">Checkpoint</span>
+        <span class="meta-date" contenteditable="true">21 de julio · 9:30 am</span>
+      </div>
+      <div class="meta-right">
+        <span class="slide-index"></span>
+        <button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button>
+      </div>
+    </div>
+    <div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">🚀</span><span class="pillar-tag" contenteditable="true">Pilar Liderazgo</span></div>
+    <h2 class="pillar-title" contenteditable="true">Liderazgo</h2>
+    <div class="content-grid">
+      <div class="col">
+        <div class="col-label">Estatus</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Ya se enviaron los guiones para aprobación.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+      <div class="col">
+        <div class="col-label">Requerimientos</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Urge la aprobación de los guiones para comenzar con la elaboración; de lo contrario nos retrasaríamos en ello.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+          <div class="item" contenteditable="true">Confirmar que el lanzamiento se recorre a septiembre.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+          <div class="item" contenteditable="true">Necesitamos las fechas del lanzamiento.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide pillar-slide" data-color="#25B0A0" data-icon="🎯">
+    <div class="meta-row">
+      <div class="meta-left">
+        <span class="meta-eyebrow">Checkpoint</span>
+        <span class="meta-date" contenteditable="true">21 de julio · 9:30 am</span>
+      </div>
+      <div class="meta-right">
+        <span class="slide-index"></span>
+        <button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button>
+      </div>
+    </div>
+    <div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">🎯</span><span class="pillar-tag" contenteditable="true">Pilar Estrategia</span></div>
+    <h2 class="pillar-title" contenteditable="true">Estrategia</h2>
+    <div class="content-grid">
+      <div class="col">
+        <div class="col-label">Estatus</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Entrevistas: llevamos 3 entrevistas (TG, Mercadotecnia y Logística). Confirmamos las entrevistas.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+          <div class="item" contenteditable="true">Requerimientos: necesitamos que se ajusten los horarios marcados en foco.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+      <div class="col">
+        <div class="col-label">Agenda de entrevistas</div>
+        <div class="interview-list">
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">14 jul · 3:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Alejandro Chaparro</b><span>Dir. Tierra Garat</span></span>
+            <span class="badge badge-listo" onclick="cycleBadge(this)">Listo</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">16 jul · 12:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Daniel Martínez</b><span>Dir. Mercadotecnia</span></span>
+            <span class="badge badge-listo" onclick="cycleBadge(this)">Listo</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">16 jul · 1:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Juan Manuel Galindo</b><span>Dir. Logística y Cadena de Suministro</span></span>
+            <span class="badge badge-listo" onclick="cycleBadge(this)">Listo</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">21 jul · 3:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Gonzalo del Río</b><span>Dir. Jurídico — se tiene en ese horario a Finanzas</span></span>
+            <span class="badge badge-foco" onclick="cycleBadge(this)">Foco</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">23 jul · 3:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Eduardo Serra</b><span>Dir. Finanzas — se agendó en el horario de Finanzas del 21 de julio</span></span>
+            <span class="badge badge-foco" onclick="cycleBadge(this)">Foco</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">27 jul · 1:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Santiago Villanueva</b><span>Dir. Exportaciones</span></span>
+            <span class="badge badge-confirmado" onclick="cycleBadge(this)">Confirmado</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">28 jul · 12:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Javier Segura</b><span>Dir. Manufactura</span></span>
+            <span class="badge badge-confirmado" onclick="cycleBadge(this)">Confirmado</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+          <div class="interview">
+            <span class="interview-date" contenteditable="true">28 jul · 1:00 pm</span>
+            <span class="interview-person" contenteditable="true"><b>Eduardo de la Loza</b><span>Dir. RH — aparece a las 3:00 pm en la agenda; validar si será 1 pm o 3 pm</span></span>
+            <span class="badge badge-foco" onclick="cycleBadge(this)">Foco</span>
+            <span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>
+          </div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addInterview(this)">＋ agregar entrevista</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide pillar-slide" data-color="#E85D75" data-icon="🌱">
+    <div class="meta-row">
+      <div class="meta-left">
+        <span class="meta-eyebrow">Checkpoint</span>
+        <span class="meta-date" contenteditable="true">21 de julio · 9:30 am</span>
+      </div>
+      <div class="meta-right">
+        <span class="slide-index"></span>
+        <button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button>
+      </div>
+    </div>
+    <div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">🌱</span><span class="pillar-tag" contenteditable="true">Pilar Cultura</span></div>
+    <h2 class="pillar-title" contenteditable="true">Cultura</h2>
+    <div class="content-grid">
+      <div class="col">
+        <div class="col-label">Estatus</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Se arrancaron Focus Groups de CDMX y se recorrió el cierre de la encuesta al 24 de julio.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+          <div class="item" contenteditable="true">Ya se agendó la sesión de entrega de resultados: 17 de agosto.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+      <div class="col">
+        <div class="col-label">Requerimientos</div>
+        <div class="item-list">
+          <div class="item" contenteditable="true">Falta confirmar los Focus Groups de Puebla — urge, porque nos desfasamos en el Gantt.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+          <div class="item" contenteditable="true">Necesitamos en la sesión: post it, plumas, proyector, conexión a red, lista de asistencia, rotafolio y plumones.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+          <div class="item" contenteditable="true">Dirección de la Planta de Puebla.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>
+        </div>
+        <button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="slide-final">
+    <div class="final-icon-row" id="finalIconRow"></div>
+    <h2 class="final-title">Minuta lista</h2>
+    <p class="final-sub">Edita cualquier texto, importa un Word para actualizar el contenido, ajusta colores o agrega slides. Cuando esté lista, exporta una versión final en HTML sin edición para compartir.</p>
+    <button class="export-btn no-export" onclick="exportStatic()">⬇ Exportar</button>
+    <div class="export-note no-export">Se descargará un archivo .html de solo lectura con el contenido actual.</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="prevSlide()">‹</button>
+  <div class="nav-dots" id="navDots"></div>
+  <button class="nav-btn" id="nextBtn" onclick="nextSlide()">›</button>
+</div>
+
+<div class="toast" id="toast">Archivo exportado ✓</div>
+
+<script>
+  const deck = document.querySelector('.deck');
+  let current = 0;
+  let slides = [];
+
+  const DEFAULT_PALETTE = ['#7C6CF0','#EA8B3B','#25B0A0','#E85D75','#3F9BE8','#C97DE0','#7FBF6B','#E0A93F'];
+  let paletteIdx = 0;
+
+  // Set de iconos disponible para representar el tema/categoría de cada pilar
+  const ICONS = ['💡','🚀','🎯','🌱','📊','🤝','🔧','⚡','📌','🎨','🧭','🔍'];
+  let iconIdx = 0;
+
+  function hexToSoft(hex){ return hex + '22'; }
+
+  // Cicla al siguiente icono disponible para el pilar (slide) correspondiente
+  function cycleIcon(el){
+    const slide = el.closest('.pillar-slide');
+    if(!slide) return;
+    const current = slide.dataset.icon || ICONS[0];
+    const idx = ICONS.indexOf(current);
+    const next = ICONS[(idx + 1) % ICONS.length];
+    slide.dataset.icon = next;
+    el.textContent = next;
+    buildCoverChips();
+    saveState();
+  }
+
+  function refreshSlides(){
+    slides = Array.from(document.querySelectorAll('.slide'));
+    slides.forEach(s => {
+      if(s.classList.contains('pillar-slide')){
+        const c = s.dataset.color || '#7C6CF0';
+        s.style.setProperty('--accent', c);
+        s.style.setProperty('--accent-soft', hexToSoft(c));
+      }
+    });
+    if(current >= slides.length) current = slides.length - 1;
+    buildDots();
+    buildCoverChips();
+    buildColorPanel();
+    numberSlides();
+    render();
+  }
+
+  function numberSlides(){
+    const pillars = slides.filter(s => s.classList.contains('pillar-slide'));
+    pillars.forEach((s, i) => {
+      const label = s.querySelector('.slide-index');
+      if(label) label.textContent = String(i+1).padStart(2,'0') + ' / ' + pillars.length + ' pilares';
+    });
+  }
+
+  function buildDots(){
+    const wrap = document.getElementById('navDots');
+    wrap.innerHTML = '';
+    slides.forEach((s, i) => {
+      const d = document.createElement('div');
+      d.className = 'nav-dot' + (i === current ? ' active' : '');
+      d.dataset.index = String(i);
+      d.onclick = () => goTo(slides.indexOf(s));
+      wrap.appendChild(d);
+    });
+  }
+
+  function buildCoverChips(){
+    const wrap = document.getElementById('coverPillars');
+    wrap.innerHTML = '';
+    slides.filter(s => s.classList.contains('pillar-slide')).forEach(s => {
+      const chip = document.createElement('div');
+      chip.className = 'pillar-chip';
+      chip.dataset.index = String(slides.indexOf(s));
+      const name = (s.querySelector('.pillar-title') || {}).textContent || 'Pilar';
+      const icon = s.dataset.icon || ICONS[0];
+      chip.innerHTML = '<span class="pillar-dot" style="background:' + (s.dataset.color||'#7C6CF0') + '"></span><span class="cover-icon">' + icon + '</span>' + name;
+      chip.onclick = () => goTo(slides.indexOf(s));
+      wrap.appendChild(chip);
+    });
+    const iconRow = document.getElementById('finalIconRow');
+    iconRow.innerHTML = '';
+    slides.filter(s => s.classList.contains('pillar-slide')).forEach(s => {
+      const dot = document.createElement('span');
+      dot.className = 'final-icon';
+      dot.style.background = (s.dataset.color || '#7C6CF0') + '22';
+      dot.style.border = '1px solid ' + (s.dataset.color || '#7C6CF0');
+      dot.textContent = s.dataset.icon || ICONS[0];
+      iconRow.appendChild(dot);
+    });
+  }
+
+  function buildColorPanel(){
+    const wrap = document.getElementById('colorRows');
+    wrap.innerHTML = '';
+    const pillars = slides.filter(s => s.classList.contains('pillar-slide'));
+    if(pillars.length === 0){
+      wrap.innerHTML = '<div class="panel-empty">Agrega un slide para poder personalizar su color.</div>';
+      return;
+    }
+    pillars.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'color-row';
+      const name = (s.querySelector('.pillar-title') || {}).textContent || 'Pilar';
+      row.innerHTML = '<input type="color" value="' + (s.dataset.color||'#7C6CF0') + '"><span>' + name + '</span>';
+      row.querySelector('input').addEventListener('input', (e) => {
+        s.dataset.color = e.target.value;
+        s.style.setProperty('--accent', e.target.value);
+        s.style.setProperty('--accent-soft', hexToSoft(e.target.value));
+        buildCoverChips();
+        saveState();
+      });
+      wrap.appendChild(row);
+    });
+  }
+
+  function render(){
+    slides.forEach((s, i) => s.classList.toggle('active', i === current));
+    Array.from(document.getElementById('navDots').children).forEach((d,i) => d.classList.toggle('active', i===current));
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === slides.length - 1;
+  }
+
+  function goTo(i){ if(i<0||i>=slides.length) return; current = i; render(); Array.from(document.getElementById('navDots').children).forEach((d,idx)=>d.classList.toggle('active', idx===current)); }
+  function nextSlide(){ goTo(current+1); }
+  function prevSlide(){ goTo(current-1); }
+
+  document.addEventListener('keydown', (e) => {
+    const el = document.activeElement;
+    if(el && el.isContentEditable) return;
+    if(e.key === 'ArrowRight') nextSlide();
+    if(e.key === 'ArrowLeft') prevSlide();
+  });
+
+  // ---------- item / interview management ----------
+  function addItem(btn){
+    const list = btn.previousElementSibling;
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.contentEditable = 'true';
+    item.innerHTML = 'Nuevo punto…<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span>';
+    list.appendChild(item);
+    item.focus();
+    saveState();
+  }
+  function removeItem(el){ el.closest('.item').remove(); saveState(); }
+
+  function addInterview(btn){
+    const list = btn.previousElementSibling;
+    const row = document.createElement('div');
+    row.className = 'interview';
+    row.innerHTML =
+      '<span class="interview-date" contenteditable="true">Fecha · hora</span>' +
+      '<span class="interview-person" contenteditable="true"><b>Nombre</b><span>Puesto</span></span>' +
+      '<span class="badge badge-foco" onclick="cycleBadge(this)">Foco</span>' +
+      '<span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>';
+    list.appendChild(row);
+    saveState();
+  }
+  function removeInterview(el){ el.closest('.interview').remove(); saveState(); }
+  function cycleBadge(el){
+    const order = [['badge-listo','Listo'],['badge-foco','Foco'],['badge-confirmado','Confirmado']];
+    const idx = order.findIndex(o => el.classList.contains(o[0]));
+    const next = order[(idx+1) % order.length];
+    order.forEach(o => el.classList.remove(o[0]));
+    el.classList.add(next[0]);
+    el.textContent = next[1];
+    saveState();
+  }
+
+  // ---------- slide management ----------
+  function addSlide(){
+    const color = DEFAULT_PALETTE[paletteIdx % DEFAULT_PALETTE.length];
+    paletteIdx++;
+    const icon = ICONS[iconIdx % ICONS.length];
+    iconIdx++;
+    const section = document.createElement('section');
+    section.className = 'slide pillar-slide';
+    section.dataset.color = color;
+    section.dataset.icon = icon;
+    section.innerHTML =
+      '<div class="meta-row">' +
+        '<div class="meta-left"><span class="meta-eyebrow">Checkpoint</span><span class="meta-date" contenteditable="true">Fecha</span></div>' +
+        '<div class="meta-right"><span class="slide-index"></span><button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button></div>' +
+      '</div>' +
+      '<div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">' + icon + '</span><span class="pillar-tag" contenteditable="true">Pilar Nuevo</span></div>' +
+      '<h2 class="pillar-title" contenteditable="true">Nuevo pilar</h2>' +
+      '<div class="content-grid">' +
+        '<div class="col"><div class="col-label">Estatus</div><div class="item-list"><div class="item" contenteditable="true">Escribe el estatus aquí.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div></div><button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button></div>' +
+        '<div class="col"><div class="col-label">Requerimientos</div><div class="item-list"><div class="item" contenteditable="true">Escribe el requerimiento aquí.<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div></div><button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button></div>' +
+      '</div>';
+    const finalSlide = document.getElementById('slide-final');
+    deck.insertBefore(section, finalSlide);
+    refreshSlides();
+    goTo(slides.indexOf(section));
+    section.querySelector('.pillar-title').focus();
+    saveState();
+  }
+
+  function deleteSlide(btn){
+    const s = btn.closest('.slide');
+    if(!confirm('¿Eliminar esta slide? Esta acción no se puede deshacer.')) return;
+    const idx = slides.indexOf(s);
+    s.remove();
+    refreshSlides();
+    saveState();
+    goTo(Math.max(0, idx - 1));
+  }
+
+  function togglePanel(id){
+    document.getElementById(id).classList.toggle('open');
+  }
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('colorPanel');
+    if(!panel.contains(e.target) && !e.target.closest('.toolbar')) panel.classList.remove('open');
+  });
+
+  // ---------- Word import ----------
+  document.getElementById('wordFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    showToast('Leyendo documento…');
+    try{
+      const buf = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: buf });
+      parseAndApply(result.value);
+    }catch(err){
+      console.error(err);
+      showToast('No se pudo leer el Word. Intenta con un .docx válido.');
+    }
+    e.target.value = '';
+  });
+
+  function normalize(str){
+    return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  }
+
+  function parseAndApply(rawText){
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    // fecha: primera línea con patrón de fecha antes del primer "Pilar"
+    const firstPillarIdx = lines.findIndex(l => /^pilar\s+/i.test(l));
+    const headLines = firstPillarIdx === -1 ? lines : lines.slice(0, firstPillarIdx);
+    let dateMatch = null;
+    for(const l of headLines){
+      const m = l.match(/(\d{1,2}\s+de\s+[a-zñáéíóúA-ZÑÁÉÍÓÚ]+(?:\s+de\s+\d{4})?)\s*(\d{1,2}:\d{2}\s?(?:am|pm))?/i);
+      if(m){ dateMatch = (m[1] + (m[2] ? ' · ' + m[2] : '')).trim(); break; }
+    }
+
+    // pilares
+    const pillars = [];
+    let cur = null, section = null;
+    lines.forEach(l => {
+      const pilarMatch = l.match(/^pilar\s+([^:]+):?$/i);
+      if(pilarMatch){
+        cur = { name: pilarMatch[1].trim(), estatus: [], requerimientos: [] };
+        pillars.push(cur);
+        section = null;
+        return;
+      }
+      if(!cur) return;
+      const estMatch = l.match(/^estatus:?\s*(.*)$/i);
+      const reqMatch = l.match(/^requerimientos:?\s*(.*)$/i);
+      if(estMatch){ section = 'estatus'; if(estMatch[1]) cur.estatus.push(estMatch[1]); return; }
+      if(reqMatch){ section = 'requerimientos'; if(reqMatch[1]) cur.requerimientos.push(reqMatch[1]); return; }
+      if(section) cur[section].push(l.replace(/^[-•]\s*/, ''));
+    });
+
+    if(pillars.length === 0){
+      showToast('No reconocí una estructura de "Pilar / Estatus / Requerimientos" en el Word.');
+      return;
+    }
+
+    let updated = 0, created = 0, firstTouched = null;
+    pillars.forEach(p => {
+      const existing = slides.find(s => s.classList.contains('pillar-slide') &&
+        normalize((s.querySelector('.pillar-title')||{}).textContent||'').includes(normalize(p.name).split(' ')[0]));
+      let targetSlide = existing;
+      if(!targetSlide){
+        addSlideSilently(p.name);
+        targetSlide = slides[slides.length - 1];
+        created++;
+      } else {
+        updated++;
+      }
+      fillPillarSlide(targetSlide, p);
+      if(!firstTouched) firstTouched = targetSlide;
+    });
+
+    if(dateMatch){
+      document.querySelectorAll('.meta-date').forEach(el => el.textContent = dateMatch);
+    }
+
+    refreshSlides();
+    if(firstTouched) goTo(slides.indexOf(firstTouched));
+    showToast('Word importado — ' + updated + ' pilar(es) actualizado(s), ' + created + ' nuevo(s). Revisa el contenido.');
+    saveState();
+  }
+
+  function addSlideSilently(name){
+    const color = DEFAULT_PALETTE[paletteIdx % DEFAULT_PALETTE.length];
+    paletteIdx++;
+    const icon = ICONS[iconIdx % ICONS.length];
+    iconIdx++;
+    const section = document.createElement('section');
+    section.className = 'slide pillar-slide';
+    section.dataset.color = color;
+    section.dataset.icon = icon;
+    section.innerHTML =
+      '<div class="meta-row">' +
+        '<div class="meta-left"><span class="meta-eyebrow">Checkpoint</span><span class="meta-date" contenteditable="true">Fecha</span></div>' +
+        '<div class="meta-right"><span class="slide-index"></span><button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button></div>' +
+      '</div>' +
+      '<div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">' + icon + '</span><span class="pillar-tag" contenteditable="true">Pilar ' + name + '</span></div>' +
+      '<h2 class="pillar-title" contenteditable="true">' + name + '</h2>' +
+      '<div class="content-grid">' +
+        '<div class="col"><div class="col-label">Estatus</div><div class="item-list"></div><button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button></div>' +
+        '<div class="col"><div class="col-label">Requerimientos</div><div class="item-list"></div><button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button></div>' +
+      '</div>';
+    document.getElementById('slide-final').before(section);
+    slides = Array.from(document.querySelectorAll('.slide'));
+  }
+
+  function fillPillarSlide(slideEl, p){
+    const cols = slideEl.querySelectorAll('.col');
+    if(cols[0] && p.estatus.length){
+      const list = cols[0].querySelector('.item-list');
+      list.innerHTML = '';
+      p.estatus.forEach(txt => list.appendChild(makeItem(txt)));
+    }
+    if(cols[1] && p.requerimientos.length){
+      const list = cols[1].querySelector('.item-list');
+      list.innerHTML = '';
+      p.requerimientos.forEach(txt => list.appendChild(makeItem(txt)));
+    }
+  }
+  function makeItem(text){
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.contentEditable = 'true';
+    item.textContent = text;
+    const rm = document.createElement('span');
+    rm.className = 'item-remove no-export';
+    rm.title = 'Eliminar punto';
+    rm.textContent = '−';
+    rm.onclick = () => { item.remove(); saveState(); };
+    item.appendChild(rm);
+    return item;
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  // ---------- EXPORT (misma presentación, en modo solo lectura) ----------
+  function exportStatic(){
+    const clone = document.documentElement.cloneNode(true);
+
+    // quita toda posibilidad de edición
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.no-export').forEach(el => el.remove());
+    clone.querySelectorAll('.badge').forEach(el => el.removeAttribute('onclick'));
+    clone.querySelectorAll('.pillar-icon').forEach(el => { el.removeAttribute('onclick'); el.style.cursor = 'default'; });
+    const prevB = clone.querySelector('#prevBtn'), nextB = clone.querySelector('#nextBtn');
+    if(prevB) prevB.removeAttribute('onclick');
+    if(nextB) nextB.removeAttribute('onclick');
+
+    // quita el script de edición (importar Word, colores, agregar/borrar slides y puntos)
+    clone.querySelectorAll('script').forEach(el => el.remove());
+
+    // vuelve a insertar un script mínimo: solo mueve entre slides, no permite editar nada
+    const viewerScript = document.createElement('script');
+    viewerScript.textContent = `(function(){
+      var slides = Array.from(document.querySelectorAll('.slide'));
+      var dots = Array.from(document.querySelectorAll('.nav-dot'));
+      var current = 0;
+      function render(){
+        slides.forEach(function(s,i){ s.classList.toggle('active', i===current); });
+        dots.forEach(function(d,i){ d.classList.toggle('active', i===current); });
+        var prev = document.getElementById('prevBtn'), next = document.getElementById('nextBtn');
+        if(prev) prev.disabled = current===0;
+        if(next) next.disabled = current===slides.length-1;
+      }
+      function goTo(i){ if(i<0||i>=slides.length) return; current=i; render(); }
+      document.querySelectorAll('[data-index]').forEach(function(el){
+        el.addEventListener('click', function(){ goTo(parseInt(el.dataset.index,10)); });
+      });
+      var prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
+      if(prevBtn) prevBtn.addEventListener('click', function(){ goTo(current-1); });
+      if(nextBtn) nextBtn.addEventListener('click', function(){ goTo(current+1); });
+      document.addEventListener('keydown', function(e){
+        if(e.key==='ArrowRight') goTo(current+1);
+        if(e.key==='ArrowLeft') goTo(current-1);
+      });
+      render();
+    })();`;
+    clone.querySelector('body').appendChild(viewerScript);
+
+    const staticHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
+    const blob = new Blob([staticHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Minuta_Checkpoint_Pilares_Sabormex_final.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Archivo exportado ✓ (presentación de solo lectura)');
+  }
+
+  // ---------- PERSISTENCIA (localStorage + JSON) ----------
+  const STORAGE_KEY = 'minutaCheckpointSabormex_v1';       // borrador vivo de "Minuta de Hoy"
+  const HISTORY_KEY = 'minutaCheckpointSabormex_historial_v1'; // minutas guardadas explícitamente (con fecha/hora)
+
+  // Contexto de vista actual: 'today' (nueva entrada, autosave continuo) u 'history' (minuta pasada cargada)
+  let viewContext = { mode: 'today', historyId: null };
+
+  function debounce(fn, wait){
+    let timer;
+    return function(...args){
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+  }
+
+  // Escapa texto para insertarlo de forma segura dentro de innerHTML
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  // Devuelve el texto de un item/columna sin los botones de eliminar (no-export)
+  function getCleanText(el){
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('.no-export').forEach(n => n.remove());
+    return clone.textContent.trim();
+  }
+
+  function getCurrentTextColor(){
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--ink');
+    return (v || '#eef0f3').trim() || '#eef0f3';
+  }
+
+  function applyTextColor(hex){
+    document.documentElement.style.setProperty('--ink', hex);
+    const input = document.getElementById('textColorInput');
+    if(input) input.value = hex;
+  }
+
+  // Convierte el estado actual del deck a un objeto JSON serializable
+  function serializeState(){
+    return {
+      version: 2,
+      theme: {
+        textColor: getCurrentTextColor()
+      },
+      cover: {
+        title: (document.querySelector('.cover-title') || {}).innerHTML || '',
+        sub: (document.querySelector('.cover-sub') || {}).innerHTML || ''
+      },
+      pillars: slides.filter(s => s.classList.contains('pillar-slide')).map(s => {
+        const cols = Array.from(s.querySelectorAll('.col')).map(col => {
+          const label = (col.querySelector('.col-label') || {}).textContent || '';
+          const interviewList = col.querySelector('.interview-list');
+          if(interviewList){
+            return {
+              label, type: 'interviews',
+              interviews: Array.from(interviewList.querySelectorAll('.interview')).map(iv => {
+                const badge = iv.querySelector('.badge');
+                return {
+                  date: getCleanText(iv.querySelector('.interview-date')),
+                  name: getCleanText(iv.querySelector('.interview-person b')),
+                  role: getCleanText(iv.querySelector('.interview-person span')),
+                  badgeClass: badge ? Array.from(badge.classList).find(c => c.indexOf('badge-') === 0) : 'badge-foco',
+                  badgeText: badge ? badge.textContent.trim() : 'Foco'
+                };
+              })
+            };
+          }
+          const itemList = col.querySelector('.item-list');
+          return {
+            label, type: 'items',
+            items: itemList ? Array.from(itemList.querySelectorAll('.item')).map(getCleanText) : []
+          };
+        });
+        return {
+          color: s.dataset.color || '#7C6CF0',
+          icon: s.dataset.icon || ICONS[0],
+          date: getCleanText(s.querySelector('.meta-date')),
+          tag: getCleanText(s.querySelector('.pillar-tag')),
+          title: getCleanText(s.querySelector('.pillar-title')),
+          cols
+        };
+      })
+    };
+  }
+
+  // Guarda el estado en el lugar correcto según el contexto de vista:
+  // - 'today'   -> borrador continuo de la Minuta de Hoy (autosave silencioso)
+  // - 'history' -> actualiza la minuta guardada que se está viendo/editando
+  function saveState(){
+    try{
+      const data = serializeState();
+      if(viewContext.mode === 'history' && viewContext.historyId){
+        updateHistoryEntry(viewContext.historyId, data);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+    }catch(err){
+      console.warn('No se pudo guardar en localStorage:', err);
+    }
+  }
+  const saveStateDebounced = debounce(saveState, 500);
+
+  // Reconstruye el HTML de un slide-pilar a partir del objeto JSON guardado
+  function buildPillarSlideFromData(data){
+    const section = document.createElement('section');
+    section.className = 'slide pillar-slide';
+    section.dataset.color = data.color || '#7C6CF0';
+    section.dataset.icon = data.icon || ICONS[0];
+
+    const colsHtml = (data.cols || []).map(col => {
+      if(col.type === 'interviews'){
+        const rows = (col.interviews || []).map(iv =>
+          '<div class="interview">' +
+            '<span class="interview-date" contenteditable="true">' + escapeHtml(iv.date) + '</span>' +
+            '<span class="interview-person" contenteditable="true"><b>' + escapeHtml(iv.name) + '</b><span>' + escapeHtml(iv.role) + '</span></span>' +
+            '<span class="badge ' + (iv.badgeClass || 'badge-foco') + '" onclick="cycleBadge(this)">' + escapeHtml(iv.badgeText || 'Foco') + '</span>' +
+            '<span class="interview-remove no-export" onclick="removeInterview(this)" title="Eliminar entrevista">−</span>' +
+          '</div>'
+        ).join('');
+        return '<div class="col"><div class="col-label">' + escapeHtml(col.label) + '</div><div class="interview-list">' + rows + '</div><button class="add-item-btn no-export" onclick="addInterview(this)">＋ agregar entrevista</button></div>';
+      }
+      const items = (col.items || []).map(txt =>
+        '<div class="item" contenteditable="true">' + escapeHtml(txt) + '<span class="item-remove no-export" onclick="removeItem(this)" title="Eliminar punto">−</span></div>'
+      ).join('');
+      return '<div class="col"><div class="col-label">' + escapeHtml(col.label) + '</div><div class="item-list">' + items + '</div><button class="add-item-btn no-export" onclick="addItem(this)">＋ agregar punto</button></div>';
+    }).join('');
+
+    section.innerHTML =
+      '<div class="meta-row">' +
+        '<div class="meta-left"><span class="meta-eyebrow">Checkpoint</span><span class="meta-date" contenteditable="true">' + escapeHtml(data.date || 'Fecha') + '</span></div>' +
+        '<div class="meta-right"><span class="slide-index"></span><button class="slide-del-btn no-export" onclick="deleteSlide(this)" title="Eliminar slide">✕</button></div>' +
+      '</div>' +
+      '<div class="pillar-tag-row"><span class="pillar-icon" onclick="cycleIcon(this)" title="Cambiar icono">' + (data.icon || ICONS[0]) + '</span><span class="pillar-tag" contenteditable="true">' + escapeHtml(data.tag || 'Pilar') + '</span></div>' +
+      '<h2 class="pillar-title" contenteditable="true">' + escapeHtml(data.title || 'Pilar') + '</h2>' +
+      '<div class="content-grid">' + colsHtml + '</div>';
+
+    return section;
+  }
+
+  // Reconstruye TODO el deck (portada + pilares + color de texto) a partir de un objeto de estado
+  function renderDeckFromData(data){
+    if(!data || !Array.isArray(data.pillars)) return;
+
+    if(data.theme && data.theme.textColor){
+      applyTextColor(data.theme.textColor);
+    }
+
+    if(data.cover){
+      const t = document.querySelector('.cover-title');
+      const sub = document.querySelector('.cover-sub');
+      if(t && data.cover.title) t.innerHTML = data.cover.title;
+      if(sub && data.cover.sub) sub.innerHTML = data.cover.sub;
+    }
+
+    document.querySelectorAll('.pillar-slide').forEach(s => s.remove());
+    const finalSlide = document.getElementById('slide-final');
+    let maxIconIdx = 0;
+    data.pillars.forEach(p => {
+      const section = buildPillarSlideFromData(p);
+      finalSlide.before(section);
+      const ci = ICONS.indexOf(p.icon);
+      if(ci >= 0) maxIconIdx = Math.max(maxIconIdx, ci + 1);
+    });
+    iconIdx = maxIconIdx;
+    paletteIdx = data.pillars.length;
+
+    refreshSlides();
+    current = 0;
+    render();
+  }
+
+  // Carga el borrador de "Minuta de Hoy" guardado en localStorage (si existe).
+  // Si no hay nada guardado, conserva el contenido por defecto y lo guarda como punto de partida.
+  function loadState(){
+    let raw;
+    try{ raw = localStorage.getItem(STORAGE_KEY); }catch(err){ raw = null; }
+
+    if(!raw){ saveState(); return; }
+
+    let data;
+    try{ data = JSON.parse(raw); }catch(err){
+      console.warn('El estado guardado no es un JSON válido, se conserva el contenido actual.', err);
+      return;
+    }
+    if(!data || !Array.isArray(data.pillars)) return;
+
+    if(data.theme && data.theme.textColor) applyTextColor(data.theme.textColor);
+
+    if(data.cover){
+      const t = document.querySelector('.cover-title');
+      const sub = document.querySelector('.cover-sub');
+      if(t && data.cover.title) t.innerHTML = data.cover.title;
+      if(sub && data.cover.sub) sub.innerHTML = data.cover.sub;
+    }
+
+    document.querySelectorAll('.pillar-slide').forEach(s => s.remove());
+    const finalSlide = document.getElementById('slide-final');
+    let maxIconIdx = 0;
+    data.pillars.forEach(p => {
+      const section = buildPillarSlideFromData(p);
+      finalSlide.before(section);
+      const ci = ICONS.indexOf(p.icon);
+      if(ci >= 0) maxIconIdx = Math.max(maxIconIdx, ci + 1);
+    });
+    iconIdx = maxIconIdx;
+    paletteIdx = data.pillars.length;
+  }
+
+  // ---------- HISTORIAL DE MINUTAS GUARDADAS ----------
+  function getHistory(){
+    try{
+      const raw = localStorage.getItem(HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    }catch(err){
+      console.warn('El historial guardado no es válido, se reinicia.', err);
+      return [];
+    }
+  }
+
+  function setHistoryList(list){
+    try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+    catch(err){ console.warn('No se pudo guardar el historial:', err); }
+  }
+
+  function updateHistoryEntry(id, data){
+    const list = getHistory();
+    const entry = list.find(e => e.id === id);
+    if(!entry) return;
+    entry.data = data;
+    entry.updatedAt = new Date().toISOString();
+    setHistoryList(list);
+  }
+
+  function formatDateTime(iso){
+    try{
+      return new Date(iso).toLocaleString('es-MX', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    }catch(err){ return iso; }
+  }
+
+  // Botón "Guardar": registra la minuta actual en localStorage con fecha/hora de creación
+  function saveMinuteToHistory(){
+    const now = new Date();
+    const data = serializeState();
+    const titleEl = document.querySelector('.cover-title');
+    const entry = {
+      id: 'min_' + now.getTime(),
+      createdAt: now.toISOString(),
+      title: (titleEl ? titleEl.textContent.trim().replace(/\s+/g, ' ') : 'Minuta') || 'Minuta',
+      data
+    };
+    const list = getHistory();
+    list.unshift(entry);
+    setHistoryList(list);
+    renderHistoryList();
+    showToast('Minuta guardada — ' + formatDateTime(entry.createdAt));
+  }
+
+  function renderHistoryList(){
+    const wrap = document.getElementById('historyList');
+    if(!wrap) return;
+    const list = getHistory();
+    if(list.length === 0){
+      wrap.innerHTML = '<div class="panel-empty">Aún no has guardado ninguna minuta. Usa el botón "💾 Guardar" para registrar la actual con fecha y hora.</div>';
+      return;
+    }
+    wrap.innerHTML = '';
+    list.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'history-item';
+      row.innerHTML =
+        '<div class="history-item-info">' +
+          '<span class="history-item-title">' + escapeHtml(entry.title || 'Minuta') + '</span>' +
+          '<span class="history-item-date">' + escapeHtml(formatDateTime(entry.createdAt)) + '</span>' +
+        '</div>' +
+        '<button class="history-item-del no-export" title="Eliminar minuta guardada">−</button>';
+      row.addEventListener('click', (e) => {
+        if(e.target.closest('.history-item-del')) return;
+        loadHistoryEntry(entry.id);
+      });
+      row.querySelector('.history-item-del').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteHistoryEntry(entry.id);
+      });
+      wrap.appendChild(row);
+    });
+  }
+
+  function deleteHistoryEntry(id){
+    if(!confirm('¿Eliminar esta minuta guardada? Esta acción no se puede deshacer.')) return;
+    const list = getHistory().filter(e => e.id !== id);
+    setHistoryList(list);
+    renderHistoryList();
+    if(viewContext.mode === 'history' && viewContext.historyId === id) returnToToday();
+  }
+
+  // Carga (y permite seguir editando) una minuta guardada del historial
+  function loadHistoryEntry(id){
+    const entry = getHistory().find(e => e.id === id);
+    if(!entry) return;
+    viewContext = { mode: 'history', historyId: id };
+    renderDeckFromData(entry.data);
+    document.getElementById('colorPanel').classList.remove('open');
+    document.getElementById('historyPanel').classList.remove('open');
+    document.body.classList.add('viewing-history');
+    const banner = document.getElementById('viewingBanner');
+    document.getElementById('viewingBannerText').textContent = 'Viendo minuta guardada del ' + formatDateTime(entry.createdAt);
+    banner.classList.add('show');
+    document.getElementById('todayBtn').classList.add('visible');
+  }
+
+  // Botón/acceso fijo "🏠 Minuta de Hoy": vuelve al borrador vivo de hoy (nueva entrada)
+  function returnToToday(){
+    viewContext = { mode: 'today', historyId: null };
+    document.body.classList.remove('viewing-history');
+    document.getElementById('viewingBanner').classList.remove('show');
+    document.getElementById('todayBtn').classList.remove('visible');
+    document.getElementById('colorPanel').classList.remove('open');
+    document.getElementById('historyPanel').classList.remove('open');
+    // Recarga siempre desde cero para garantizar que "Hoy" refleje exactamente el borrador guardado
+    location.reload();
+  }
+
+  // Borra el contenido guardado en este navegador y recarga la minuta con su contenido original
+  function resetSavedData(){
+    if(!confirm('Esto borrará el borrador de "Minuta de Hoy" guardado en este navegador y recargará la minuta original. El historial de minutas guardadas no se ve afectado. ¿Continuar?')) return;
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(err){ /* noop */ }
+    location.reload();
+  }
+
+  // Guarda automáticamente cualquier edición de texto (contenteditable) con un pequeño retraso
+  document.addEventListener('input', (e) => {
+    if(e.target && e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') saveStateDebounced();
+  });
+
+  // Color de texto: aplica en vivo y persiste según el contexto actual (Hoy o minuta guardada)
+  document.getElementById('textColorInput').addEventListener('input', (e) => {
+    applyTextColor(e.target.value);
+    saveStateDebounced();
+  });
+
+  // ---------- ARRANQUE ----------
+  loadState();
+  applyTextColor(getCurrentTextColor());
+  refreshSlides();
+  renderHistoryList();
+</script>
+
+</body>
+</html>
